@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Newtonsoft.Json;
-using MultiTenantBlogTest.src.Shared.ViewModels;
 
 namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
 {
@@ -21,22 +20,14 @@ namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
                 var origin = tenantSchema.ExtractSubdomainFromRequest(context);
                 tenantSchema._schema = origin;
                 var schemaExists = await tenantSchema.DoesCurrentSubdomainExist();
-                Console.WriteLine($"context.Request.Headers {context.Request.Headers["Referer"]}, origin {origin}");
-
-                if (!schemaExists)
-                {
-                    context.Response.StatusCode = 404;
-                    context.Response.ContentType = "application/json";
-                    ApiResponse<dynamic> apiResponse = new ApiResponse<dynamic>
-                    {
-                        Data = null,
-                        ResponseCode = "404",
-                        ResponseMessage = "Not found",
-                        // user = null,
-                    };
-                    await context.Response.WriteAsync(JsonConvert.SerializeObject(apiResponse));
-                    return;
+                Console.WriteLine($"context.Request.Headers {context.Request.Headers["Referer"]}, origin {origin}, tenantSchema._schema {tenantSchema._schema}, schemaExists {schemaExists}");
+                if(!schemaExists) {
+                    // tenant doesnt exist
+                    var tenantCreated = await tenantSchema.NewTenant(tenantSchema._schema);
+                    if (tenantCreated.ResponseCode == "201") Console.WriteLine($"tenantCreated {tenantCreated}");
                 }
+
+                
                 // check schema if not exist on every request
                 await next.Invoke();
             });

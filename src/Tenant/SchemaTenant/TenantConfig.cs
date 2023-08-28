@@ -1,16 +1,12 @@
 using System;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
-using MultiTenantBlogTest.src.Shared.DbContext;
+using MultiTenantBlogTest.src.Shared.DatabaseContext;
 using MultiTenantBlogTest.src.Shared.Utilities;
 using MultiTenantBlogTest.src.Tenant.SchemaTenant.SchemaContext;
 
 namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
 {
-    // public interface ITenantConfig
-    // {
-    //     void info(string str);
-    // }
 
     public interface ITenantConfig<T>
     {
@@ -20,16 +16,15 @@ namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
 
     public class TenantConfig : ITenantConfig<ApplicationDbContext>
     {
-        ApplicationDbContext context;
+        ApplicationDbContext publicSchemaContext;
         string conString;
         private readonly IConfiguration _config;
 
         public TenantConfig()
         {
             _config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-            // conString = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build().GetSection("ConnectionStrings")["MultiTenantBlog"];
             conString = _config.GetSection("ConnectionStrings")["MultiTenantBlog"];
-            this.context = new ApplicationDbContext(conString, new DbContextSchema());
+            this.publicSchemaContext = new ApplicationDbContext(conString, new DbContextSchema());
         }
 
         public string getSubdomainName(string domainURL)
@@ -55,7 +50,7 @@ namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
                 tenantSubdomain = new Tenant.Model.Tenant();
             } else {
                 // verify schema exists in subdomain
-                tenantSubdomain = this.context.Tenants.FirstOrDefault(x => x.Subdomain == subdomainUrl);
+                tenantSubdomain = this.publicSchemaContext.Tenants.FirstOrDefault(x => x.Subdomain == subdomainUrl);
             }
             
             if (tenantSubdomain != null)

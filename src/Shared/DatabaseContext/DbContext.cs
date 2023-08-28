@@ -10,11 +10,11 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using MultiTenantBlogTest.src.Tenant.SchemaTenant.SchemaContext;
-using MultiTenantBlogTest.src.Shared.Models;
+using MultiTenantBlogTest.src.User.Models;
 
-namespace MultiTenantBlogTest.src.Shared.DbContext
+namespace MultiTenantBlogTest.src.Shared.DatabaseContext
 {
-    public class ApplicationDbContext : IdentityDbContext<User>, IDbContextSchema
+    public class ApplicationDbContext : DbContext, IDbContextSchema
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
@@ -53,9 +53,8 @@ namespace MultiTenantBlogTest.src.Shared.DbContext
 
         public string Schema { get; set; } = "dbo";
         private readonly string _connectionString;
-
-        // public virtual DbSet<Profile> Profiles { get; set; }
         public virtual DbSet<Tenant.Model.Tenant> Tenants { get; set; }
+        public virtual DbSet<UserModel> Users { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

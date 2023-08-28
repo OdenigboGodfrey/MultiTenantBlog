@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-// using Jobid.App.Helpers.Models;
+﻿using MultiTenantBlogTest.src.User.Models;
 
 namespace MultiTenantBlogTest.src.Shared.ViewModels
 {
@@ -10,8 +6,7 @@ namespace MultiTenantBlogTest.src.Shared.ViewModels
     {
         public string ResponseCode { get; set; }
         public string ResponseMessage { get; set; }
-        // public User user { get; set; }
         public T Data { get; set; }
-
+        public UserModel user { get; internal set; }
     }
 }

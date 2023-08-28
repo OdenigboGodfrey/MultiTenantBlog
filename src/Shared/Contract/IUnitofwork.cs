@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MultiTenantBlogTest.src.User.Contract;
 
 namespace MultiTenantBlogTest.src.Shared.Contract
 {
     public interface IUnitofwork
     {
-        public Task CommitAsync();
-        // public IUserServices Userservice { get; }
+        public IUserServices UserServices { get; }
     }
 }

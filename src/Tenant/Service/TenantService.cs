@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MultiTenantBlogTest.src.Shared.DbContext;
-using MultiTenantBlogTest.src.Shared.Models;
+using MultiTenantBlogTest.src.Shared.DatabaseContext;
 using MultiTenantBlogTest.src.Shared.Utilities;
 using MultiTenantBlogTest.src.Shared.ViewModels;
 using MultiTenantBlogTest.src.Tenant.Contract;
@@ -15,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MultiTenantBlogTest.src.User.Models;
 
 namespace MultiTenantBlogTest.src.Tenant.Service
 {
@@ -23,21 +23,13 @@ namespace MultiTenantBlogTest.src.Tenant.Service
         private ApplicationDbContext Db;
         private ApplicationDbContext subdomainSchemaContext;
 
-        private readonly UserManager<User> userManager;
+        // private readonly UserManager<UserModel> userManager;
         private readonly ITenantSchema tenantSchema;
-        public TenantService(ApplicationDbContext publicSchemaContext, UserManager<User> _userManager, ApplicationDbContext subdomainSchemaContext, ITenantSchema tenantSchema)
-        {
-            this.Db = publicSchemaContext;
-            userManager = _userManager;
-            this.subdomainSchemaContext = subdomainSchemaContext;
-            this.tenantSchema = tenantSchema;
-        }
-
         public TenantService(ApplicationDbContext publicSchemaContext, ApplicationDbContext subdomainSchemaContext, ITenantSchema tenantSchema)
         {
             this.Db = publicSchemaContext;
-            userManager = null;
             this.subdomainSchemaContext = subdomainSchemaContext;
+            this.tenantSchema = tenantSchema;
         }
 
 
@@ -121,22 +113,7 @@ namespace MultiTenantBlogTest.src.Tenant.Service
             return response;
             // return result > 0 ? true : false;
         }
-        private async Task<User> createUser(User Model)
-        {
-            User NewUser = new User
-            {
-                Email = Model.Email,
-                UserName = Model.Email,
-                FirstName = Model.FirstName,
-                LastName = Model.LastName,
-                Created_At = DateTime.Now,
-                PhoneNumber = Model.PhoneNumber,
-                Status = "Active",
-                Id = Guid.NewGuid().ToString(),
-            };
-            return NewUser;
-        }
-
+        
         public async Task<TenantMigrationResultVM> MigrateTenants()
         {
             // get all tenants subdomain
@@ -144,7 +121,13 @@ namespace MultiTenantBlogTest.src.Tenant.Service
             // 
             var response = new TenantMigrationResultVM();
             var tenantSchemaInstance = new TenantSchema();
-            var tenants = Db.Tenants.Where(x => x.isSchemaCreated).Select(x => x.Subdomain).ToList();
+            List<string> tenants = new List<string>();
+            try {
+                tenants = Db.Tenants.Where(x => x.isSchemaCreated).Select(x => x.Subdomain).ToList();
+            } catch(Exception ex) {
+                // on first run, tenants table would not exist and would throw an error
+            }
+             
             response.FailedSchemaMigrations = new List<string>();
             // run for public schema
             if (!(await tenantSchemaInstance.RunMigrations("dbo")))
@@ -194,7 +177,7 @@ namespace MultiTenantBlogTest.src.Tenant.Service
             }
 
             // remove admin
-            var admin = Db.Users.FirstOrDefault(x => x.Id == tenant.AdminId);
+            var admin = Db.Users.FirstOrDefault(x => x.Id == new Guid(tenant.AdminId));
             if (admin == null) {
                 response.ResponseMessage = "Tenant admin user not found.";
                 return response;
@@ -206,7 +189,6 @@ namespace MultiTenantBlogTest.src.Tenant.Service
             response.ResponseCode = (result > 0) ? "200" : "500";
             return response;
         }
-
 
     }
 }

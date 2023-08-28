@@ -1,13 +1,6 @@
-using Microsoft.AspNetCore.Identity;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-namespace MultiTenantBlogTest.src.Shared.Models
+namespace MultiTenantBlogTest.src.Blog.Models
 {
     public class Blog
     {
@@ -17,6 +10,7 @@ namespace MultiTenantBlogTest.src.Shared.Models
 
         public string content { get; set; }
         public string parentId { get; set; }
+        public string userId { get; set; } = "TestUserId";
     }
 }
 

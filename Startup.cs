@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using MultiTenantBlogTest.src.Shared.DbContext;
+using MultiTenantBlogTest.src.Shared.DatabaseContext;
 using MultiTenantBlogTest.src.Tenant.SchemaTenant.SchemaContext;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using MultiTenantBlogTest.src.Shared.Repository;
@@ -14,6 +14,8 @@ using MultiTenantBlogTest.src.Shared.Contract;
 using Microsoft.AspNetCore.Http;
 using MultiTenantBlogTest.src.Tenant.Service;
 using MultiTenantBlogTest.src.Tenant.SchemaTenant;
+using MultiTenantBlogTest.src.User.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace MultiTenantBlogTest
 {
@@ -30,12 +32,6 @@ namespace MultiTenantBlogTest
         public void ConfigureServices(IServiceCollection services)
         {
 
-            services.AddControllers();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "MultiTenantBlogTest", Version = "v1" });
-            });
-
             /**
             1) Schema Modification: Make Context Schema Aware
             */
@@ -44,9 +40,10 @@ namespace MultiTenantBlogTest
                     .ReplaceService<IMigrationsAssembly, DbSchemaAwareMigrationAssembly>()
                     .ReplaceService<IModelCacheKeyFactory, DbSchemaAwareModelCacheKeyFactory>()
                     ).AddSingleton<IDbContextSchema>(new DbContextSchema());
-            
+
             services.AddScoped<IUnitofwork, Unitofwork>();
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddTransient<IPasswordHasher<UserModel>, PasswordHasher<UserModel>>();
             //////////////////////////Enable  Cross ORigin//////////////////////////////////////////
 
             services.AddCors(o => o.AddPolicy("MyPolicy", builder =>
@@ -64,7 +61,12 @@ namespace MultiTenantBlogTest
             services.AddSingleton<IConfiguration>(Configuration);
             services.AddScoped<ITenantSchema, TenantSchema>();
             services.AddTransient<TenantService>();
-            System.Console.WriteLine($"============ Here in Configure Services ============ ");
+
+            services.AddControllers();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "MultiTenantBlogTest", Version = "v1" });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -73,7 +75,7 @@ namespace MultiTenantBlogTest
             app.CustomEnginerInterceptor();
             // run migrations
             tenantService.MigrateTenants();
-            
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -91,8 +93,6 @@ namespace MultiTenantBlogTest
             {
                 endpoints.MapControllers();
             });
-
-            System.Console.WriteLine($"============ Here in Configure ============");
         }
     }
 }

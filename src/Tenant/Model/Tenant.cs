@@ -20,8 +20,6 @@ namespace MultiTenantBlogTest.src.Tenant.Model
         public bool isSchemaCreated { get; set; }
         public DateTime LastMigration { get; set; }
         public string AdminId { get; set; }
-        // [ForeignKey("AdminId")]
-        // public virtual User Admin { get; set; }
         public string LogoUrl { get; set; }
         public string Status { get; set; }
     }

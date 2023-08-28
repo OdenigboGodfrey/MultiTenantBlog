@@ -1,22 +1,21 @@
 using Microsoft.AspNetCore.Identity;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
-namespace MultiTenantBlogTest.src.Shared.Models
+namespace MultiTenantBlogTest.src.User.Models
 {
-    public class User : IdentityUser
+    public class UserModel
     {
+        [Key]
+        public Guid Id { get; set; }
         public DateTime Created_At { get; set; }
 
         public string FirstName { get; set; }
 
         public string LastName { get; set; }
         public string Status { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
         public DateTime DateOfBirth { get; set; }
     }
 }

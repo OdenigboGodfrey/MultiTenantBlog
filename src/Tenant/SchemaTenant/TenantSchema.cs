@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
-using MultiTenantBlogTest.src.Shared.DbContext;
 using MultiTenantBlogTest.src.Tenant.SchemaTenant.SchemaContext;
 using MultiTenantBlogTest.src.Shared.Utilities;
+using MultiTenantBlogTest.src.Shared.ViewModels;
+using System.Linq;
+using MultiTenantBlogTest.src.Shared.DatabaseContext;
 
 namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
 {
@@ -95,9 +97,10 @@ namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
                 schemaName = Utility.prepareSubdomainName(schemaName);
                 var schema = await this.NewSchema(schemaName);
                 if (!schema) throw new Exception("Schema not created.");
-                this.context = new ApplicationDbContext(conString, new DbContextSchema(schemaName));
+                var _context = new ApplicationDbContext(conString, new DbContextSchema(schemaName));
                 // check if pending migrations first
-                this.context.Database.Migrate();
+                _context.Database.Migrate();
+                Console.WriteLine("db migrated");
                 return true;
             }
             catch (Exception e)
@@ -106,6 +109,71 @@ namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
                 return false;
             }
         }
+
+        public async Task<ApiResponse<bool>> NewTenant(string Subdomain)
+        {
+            var response = new ApiResponse<bool>
+            {
+                Data = false,
+                ResponseCode = "400",
+                ResponseMessage = ""
+            };
+            var preparedSubdomainName = Utility.prepareSubdomainName(Subdomain);
+            try {
+                // on first run, 
+                Console.WriteLine($"new tenant run");
+                var appliedMigrations = await this.context.Database.GetAppliedMigrationsAsync();
+                Console.WriteLine($"appliedMigrations {appliedMigrations.Count()}");
+                if (this.context.Tenants.Where(x => x.Subdomain == preparedSubdomainName).Count() > 0)
+                {
+                    response.ResponseCode = "409";
+                    response.ResponseMessage = "Subdomain already exists.";
+                    return response;
+                }
+            }
+            catch(Exception ex) {
+                throw ex;
+            }
+
+            // create tenant
+            var tenant = new Model.Tenant(); //model.tenant.Map();
+            // remove special chars from subdomain
+            tenant.Subdomain = preparedSubdomainName;
+            Console.WriteLine($"origin Subdomain {Subdomain} + preparedSubdomainName {preparedSubdomainName} + {tenant.Subdomain}");
+            tenant.DateCreated = DateTime.Now;
+            // create subdomain schema
+            var newSchemaCreated = await this.NewSchema(tenant.Subdomain);
+            // apply migrations
+            if (!newSchemaCreated)
+            {
+                response.ResponseMessage = "Something went wrong while creating schema. ";
+                response.ResponseCode = "500";
+                return response;
+            }
+            tenant.isSchemaCreated = true;
+
+            var migrationStatus = await this.RunMigrations(tenant.Subdomain);
+            if (!migrationStatus)
+            {
+                response.ResponseMessage = "Something went wrong while running migrations on schema.";
+                response.ResponseCode = "500";
+                return response;
+            }
+            tenant.LastMigration = DateTime.Now;
+            this.context.Tenants.Add(tenant);
+
+            int result = await this.context.SaveChangesAsync();
+            response.Data = result > 0 ? true : false;
+            if (response.Data) {
+                response.ResponseMessage = "Tenant information saved";
+                response.ResponseCode = "201";
+            } else {
+                response.ResponseMessage = "Tenant information failed to be saved";
+                response.ResponseCode = "500";
+            }
+            return response;
+        }
+       
 
         public ApplicationDbContext getRequestContext()
         {
@@ -119,15 +187,21 @@ namespace MultiTenantBlogTest.src.Tenant.SchemaTenant
 
         public async Task<bool> DoesCurrentSubdomainExist()
         {
-            string rootDomain = _config["RootDomain"];
-            var tenant = await this.context.Tenants.FirstOrDefaultAsync(x => x.Subdomain == _schema);
-            if (_schema == "api" || _schema == "admin" || _schema == rootDomain)
-            {
+            try {
+                string rootDomain = _config["RootDomain"];
+                if (_schema == "api" || _schema == "admin" || _schema == rootDomain)
+                {
+                    // public subdomains
+                    // i.e subdomains which would use dbo as its schema mainly used for public functionalities
+                    return true;
+                }
+                var tenant = await this.context.Tenants.FirstOrDefaultAsync(x => x.Subdomain == _schema);
+                if (tenant == null) return false;
+                Console.WriteLine($"tenant ${tenant.Subdomain}");
                 return true;
+            } catch(Exception ex) {
+                return false;
             }
-            if (tenant == null) return false;
-            Console.WriteLine($"tenant ${tenant.Subdomain}");
-            return true;
         }
 
         public string ExtractSubdomainFromRequest(HttpContext httpContext)
